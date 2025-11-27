@@ -1,0 +1,13 @@
+/*
+  Nome: Cidade do CD
+  Descrição: Identificar onde está a loja do merchant para verificar qual serviço está disponível para ele
+*/
+
+select 
+        l.storeid
+        ,json_extract_scalar(l.address,'$.city') AS city
+from curated.shipping.locations l
+where 1=1
+and l.deletedat is null
+and l.priority = 0
+and isdraft = FALSE
