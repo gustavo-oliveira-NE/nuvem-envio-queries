@@ -1,8 +1,0 @@
-/*
-  Nome: locations
-  Descrição: Query para achar os cep origem dos merchants NS 
-*/
-SELECT
-l.storeid AS store_id,
-l.address.zipcode AS origin_zipcode_resolved
-FROM curated.shipping.locations l 
