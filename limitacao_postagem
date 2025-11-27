@@ -1,0 +1,10 @@
+/*
+  Nome: limitação de postagem
+  Descrição: identificar se o merchant tem alguma limitação de postagem
+*/
+SELECT 
+         s.id AS store_id
+        ,s.dispatch_limit_per_day         
+FROM curated.logistics_store.store s
+WHERE s.id IN :: list_store_ids
+LIMIT 5
