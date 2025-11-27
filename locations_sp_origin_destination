@@ -1,0 +1,23 @@
+/*
+  Nome: Locations Origin SP Destination SP
+  Descrição: Localizações com CEP de origem e destino para São Paulo
+*/
+WITH origem_sp AS (
+  SELECT
+    CAST(storeid AS BIGINT) AS store_id
+  FROM curated.shipping.locations
+  WHERE address IS NOT NULL
+    AND chosenasdefaultat IS NOT NULL
+    AND deletedat IS NULL
+    AND isdraft = FALSE
+    AND address.country.code = 'BR'
+    AND address.zipcode IS NOT NULL
+    AND address.province.name = 'São Paulo'
+)
+
+SELECT *
+FROM refined.data_operations.company_metrics_paid_orders cmpo
+JOIN origem_sp os
+  ON os.store_id = cmpo.store_id
+WHERE cmpo.shipping_province = 'São Paulo'
+LIMIT 100;
