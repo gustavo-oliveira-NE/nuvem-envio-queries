@@ -1,0 +1,26 @@
+/*
+  Nome: Queries para PP
+  Descrição: Query para extração da base dos envios com parceiros solicitada pelo time de planejamento e controle
+*/
+select 
+do.id ,
+do.delivery_option_code,
+do.tracking_code ,
+do.created_at,
+do.weight as ""peso cotado"",
+do.width as ""largura cotada"",
+do.height as ""altura cotada"",
+do.depth as ""comprimento cotado"",
+do.selected_weight as ""peso considerado"",
+do.declared_value as ""valor declarado"",
+do.quotation_carrier_value as ""custo cotado"",
+do.quotation_markup_value as ""markup cotado"",
+do.quotation_final_value as ""preço final cotado"",
+ae.quotation_carrier_value as ""custo faturado"",
+ae.quotation_markup_value as ""markup faturado"",
+ae.quotation_final_value as ""preço final faturado""
+from curated.nuvem_envio_conciliation.delivery_order do 
+left join curated.nuvem_envio_conciliation.accounting_entry ae 
+ON do.id = ae.delivery_order_id
+where delivery_option_code in ('ne-correios-sedex', 'ne-correios-pac', 'ne-correios-mini')
+and do.year_month_code >= 202505
