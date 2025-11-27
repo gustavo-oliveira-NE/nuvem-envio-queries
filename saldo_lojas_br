@@ -1,0 +1,13 @@
+/*
+  Nome: Query saldo lojas
+  Descrição: Query para extração do saldo atual das lojas bo Brasil.
+*/
+SELECT  external_store_id AS store_id,
+        DATE(created_at) AS created_at,
+        DATE(updated_at) AS updated_at,
+        currency,
+        amount
+FROM curated.logistics_statement.current_balance
+WHERE 1=1
+AND currency = 'BRL'
+ORDER BY updated_at DESC
