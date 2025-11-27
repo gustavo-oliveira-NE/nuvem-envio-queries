@@ -1,0 +1,15 @@
+/*
+  Nome: Multi CD
+  Descrição: Query para achar os merchants MultiCD Argentina
+*/
+SELECT
+distinct storeid,
+count(distinct _id) as CDcount
+FROM ""curated"".""shipping"".""locations"" as l
+inner join ""curated"".""moltres"".""mwp_store_info"" si on cast(si.id as varchar) = l.storeid and si.state < 4
+where l.isdraft = false
+and l.deletedat is null
+and si.country = 'AR'
+group by 1
+having count(distinct _id) > 1
+order by 2 desc
