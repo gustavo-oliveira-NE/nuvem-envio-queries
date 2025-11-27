@@ -1,0 +1,13 @@
+/*
+  Nome: tipo_contrato_correios
+  Descrição: identificar se o merchant tem algum contrato com os correios
+*/
+
+SELECT 
+        CAST(external_store_id AS BIGINT) AS store_id
+    ,contract_type AS correio_contract_type
+FROM curated.nuvem_envio_quotation.carrier_store 
+WHERE 1=1
+        AND contract_type IN ('Proprio', 'Balcao')
+        AND CAST(external_store_id AS BIGINT) IN list_store_ids
+GROUP BY external_store_id
