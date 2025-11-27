@@ -1,0 +1,18 @@
+/*
+  Nome: Installation status
+  Descrição: Estado de instalación de la aplicación
+*/
+SELECT 
+        store_id
+        ,case when status = 1 and deleted_at is null then 'EN Activo'
+          when status = 0 AND deleted_at is null then 'EN Inactivo'
+          when deleted_at is not null then 'EN Uninstalled' end as en_status
+FROM 
+(
+SELECT 
+        *
+        ,ROW_NUMBER() OVER(PARTITION BY sc.store_id ORDER BY sc.updated_at DESC) AS rank_updated
+FROM curated.moltres.mwp_shipping_carriers sc 
+WHERE app_id = 9075
+)
+WHERE rank_updated = 1
