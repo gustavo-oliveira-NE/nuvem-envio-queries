@@ -1,0 +1,8 @@
+/*
+  Nome: First_payment
+  Descrição: fecha de pago del primer plan
+*/
+SELECT 
+         i.id AS store_id
+        ,i.first_payment 
+FROM curated.moltres.mwp_store_info i
