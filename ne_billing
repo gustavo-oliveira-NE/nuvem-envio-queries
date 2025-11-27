@@ -1,0 +1,66 @@
+/*
+  Nome:Queries de Billing
+  Descrição: queries utilizadas para extração dos relatório mensais de Billing NE
+*/
+------------------------------------ RELATÓRIO 1 ---------------------------------------------------
+
+SELECT 
+    store_id,
+    domain,
+    cycle_status,
+    payment_expiration_date,
+    created_at,
+    payment_status_updated_date,
+    id_type,
+    id_number,
+    business_name,
+    invoice_emission_date,
+    invoice_number,
+    billing_cycle_end_date,
+    invoice_value,
+    receipt_value,
+    ROUND(correios_cost_value, 2) AS correios_cost_value,
+    ROUND(jadlog_cost_value, 2) AS jadlog_cost_value,
+    ROUND(loggi_cost_value, 2) AS loggi_cost_value,
+    ROUND(mandae_cost_value, 2) AS mandae_cost_value
+FROM 
+    refined.data_logistics.logistics_billing__nuvem_envio
+WHERE 1=1
+    AND billing_cycle_end_date = '2025-07-31' -- Relatório 1
+    -- AND payment_status_updated_date IS NULL -- Relatório 1
+;
+
+------------------------------------ RELATÓRIO 2 ---------------------------------------------------
+
+SELECT 
+    store_id,
+    domain,
+    original_payment_value,
+    ROUND(payment_value,2) AS payment_value,
+    adjustment_value,
+    cycle_status,
+    payment_expiration_date,
+    created_at,
+    payment_status_updated_date,
+    id_type,
+    id_number,
+    business_name,
+    invoice_emission_date,
+    invoice_number,
+    billing_cycle_end_date,
+    invoice_value,
+    receipt_number,
+    receipt_value,
+    penalty_value,
+    payment_method_fee_value,
+    ROUND(correios_cost_value, 2) AS correios_cost_value,
+    ROUND(jadlog_cost_value, 2) AS jadlog_cost_value,
+    ROUND(loggi_cost_value, 2) AS loggi_cost_value,
+    ROUND(mandae_cost_value, 2) AS mandae_cost_value
+    
+FROM 
+    refined.data_logistics.logistics_billing__nuvem_envio
+WHERE 1=1
+    AND payment_expiration_date  IS NOT NULL -- Relatório 2
+    AND payment_status_updated_date BETWEEN DATE('2025-07-01') AND DATE('2025-07-31') -- Relatório 2
+;
