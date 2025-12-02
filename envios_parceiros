@@ -1,0 +1,133 @@
+/*
+Consulta que contém as dimensões dos envios para alguns parceiros (filtrados na cleintes_ids).
+*/
+
+WITH clientes_ids(id) AS (
+    VALUES (998403), (1504053), (1741304), (1774881), (1698670),
+           (1013680), (2636086), (2233508), (853029), (1857774)
+),
+endereco_coleta AS (
+    SELECT DISTINCT
+        us.id      AS id_cliente,
+        en.cidade  AS cidade_coleta
+    FROM usuario us
+    INNER JOIN clientes_enderecos ce ON us.id = ce.clientes_id_fk
+    INNER JOIN endereco en           ON ce.enderecos_id_fk = en.id
+    WHERE en.ativo = true
+      -- se quiser manter o filtro de clientes específicos:
+      -- AND us.id IN (SELECT id FROM clientes_ids)
+),
+/* volume_mv alinhado aos 45 dias da saída (pode voltar a 60 se quiser) */
+volume_mv AS (
+    SELECT
+        v.remessa_fk,
+        SUM( (v.altura * v.largura * v.comprimento * 167)::numeric / 1000000 ) AS peso_cubado,
+        SUM( v.peso::numeric / 1000 )                                           AS peso_kg,
+        SUM(v.altura)        AS altura,
+        SUM(v.comprimento)   AS comprimento,
+        SUM(v.largura)       AS largura
+    FROM volume v
+    INNER JOIN remessa r ON r.id = v.remessa_fk
+    WHERE 
+        -- mesmos clientes da CTE:
+        r.cliente_fk IN (SELECT id FROM clientes_ids)
+        AND r.servico_envio <> 23
+        AND v.peso IS NOT NULL
+        AND r.data_hora_envio::date >= CURRENT_DATE - INTERVAL '45 DAYS'
+    GROUP BY v.remessa_fk
+),
+dimensoes_f AS (
+    SELECT 
+        vm.remessa_fk,
+        vm.peso_cubado,
+        vm.peso_kg,
+        vm.altura,
+        vm.comprimento,
+        vm.largura,
+        CASE 
+            WHEN vm.peso_cubado <= 10 THEN vm.peso_kg
+            ELSE GREATEST(vm.peso_cubado, vm.peso_kg)
+        END AS peso_cobrado
+    FROM volume_mv vm
+)
+SELECT
+    re.id AS "id_remessa",
+    (SELECT nome_exibicao FROM item_catalogo WHERE catalogo_fk = 13 AND valor = en.uf) AS "UF",
+    en.cep     AS cep_destino,
+    en.cidade  AS cidade_destino,
+    re.codigo_rastreamento,
+    CASE 
+        WHEN re.codigo_rastreio_transportadora IS NULL THEN 'sem_codigo' 
+        ELSE re.codigo_rastreio_transportadora 
+    END AS "codigo_transportadora",
+    re.contrato_transportadora_fk AS "id_transportadora",
+    ROUND(re.custo_interno::numeric,2) AS "custo_frete",
+    re.data_hora_conferida,
+    re.data_hora_conferida::date      AS data_conferida,
+    re.data_hora_envio,
+    re.data_hora_envio::date          AS data_envio,
+    re.data_hora_processamento,
+    re.data_hora_processamento::date  AS data_processamento,
+    re.data_hora_dimensionamento,
+    re.data_hora_dimensionamento::date AS data_dimensionamento,
+    re.data_hora_triagem,
+    re.data_hora_triagem::date        AS data_triagem,
+    re.fila_conferencia,
+    CASE 
+        WHEN ct.nome IS NULL THEN 'sem_contrato' 
+        ELSE ct.nome 
+    END AS "transportadora",
+    ROUND(re.valor::numeric,2) AS "preco_frete",
+    re.motivo_criacao,
+    CONCAT('="', re.chave_acesso_nfe, '"') AS chave_acesso_nfe,
+    re.referencia AS nro_nf,
+    us.nome as nome_cliente,
+    us.id    AS id_cliente,
+    us.email,
+    (SELECT nome_exibicao FROM item_catalogo WHERE catalogo_fk = 50 AND valor = re.situacao)     AS status,
+    (SELECT nome_exibicao FROM item_catalogo WHERE catalogo_fk = 35 AND valor = re.servico_envio) AS servico_envio,
+    (SELECT nome_exibicao FROM item_catalogo WHERE catalogo_fk = 35 AND valor = re.etiqueta_envio) AS etiqueta_envio,
+    re.data_chegada_vendida::date         AS data_previsao_entrega_cliente,
+    re.data_hora_previsao_entrega::date   AS data_previsao_entrega_transportadora,
+    re.data_hora_entrega::date            AS data_entrega,
+    re.data_hora_primeira_tentativa_entrega::date AS data_primeira_tentativa_entrega,
+    re.prazo_cliente,
+    re.prazo_transportadora,
+    CASE 
+        WHEN ud.id IN (12,13,15,17) THEN 'MG' 
+        ELSE 'SP' 
+    END AS "unidade",
+    cl.situacao_cliente,
+    cl.situacao_cadastral,
+    cl.grupo_configuracao_id,
+    -- Peso/dimensões usando fallback de dimensoes_f
+    ROUND(
+        COALESCE(re.peso::numeric / 1000, df.peso_kg, 0)::numeric
+    ,2) AS "peso_kg",
+    COALESCE(re.altura,      df.altura,      0) AS "altura",
+    COALESCE(re.comprimento, df.comprimento, 0) AS "comprimento",
+    COALESCE(re.largura,     df.largura,     0) AS "largura",
+    ROUND(re.valor_declarado::numeric,2) AS "valor_declarado",
+    ROUND(re.valor_nfe::numeric,2)       AS "valor_nota_fiscal",
+    ec.cidade_coleta,
+    df.peso_cubado,
+    df.peso_cobrado
+FROM remessa re
+INNER JOIN ordem_servico os ON re.ordem_servico_fk = os.id
+INNER JOIN cliente       cl ON cl.usuario_fk = re.cliente_fk
+INNER JOIN usuario       us ON us.id = cl.usuario_fk
+INNER JOIN destinatario  de ON de.id = re.destinatario_fk
+INNER JOIN endereco      en ON en.id = de.endereco_fk
+LEFT  JOIN unidade               ud ON ud.id = os.unidade_fk
+LEFT  JOIN contrato_transportadora ct ON ct.id = re.contrato_transportadora_fk
+LEFT  JOIN endereco_coleta        ec ON ec.id_cliente = us.id
+LEFT  JOIN dimensoes_f            df ON df.remessa_fk = re.id
+WHERE
+    re.situacao <> 8                          -- cancelada
+    AND us.email IS NOT NULL
+    AND cl.grupo_configuracao_id IS NOT NULL
+    AND en.uf IS NOT NULL
+    -- filtro de clientes:
+    AND us.id IN (SELECT id FROM clientes_ids)
+    -- filtro de período original:
+    AND re.data_hora_envio >= (CURRENT_DATE - INTERVAL '45 DAYS')
